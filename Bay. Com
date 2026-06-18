@@ -1,1 +1,198 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/anhtinhstinhs-gif/emot.lua/main/Bay.%20Com"))()
+-- Menu GUI for Roblox Flight Script
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlightMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main menu frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 400, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+mainFrame.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+mainFrame.BorderSizePixel = 3
+mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.Parent = screenGui
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 32
+title.Font = Enum.Font.GothamBold
+title.Text = "MENU"
+title.BorderSizePixel = 0
+title.Parent = mainFrame
+
+-- BAY Button
+local bayButton = Instance.new("TextButton")
+bayButton.Name = "BayButton"
+bayButton.Size = UDim2.new(0.9, 0, 0, 80)
+bayButton.Position = UDim2.new(0.05, 0, 0, 70)
+bayButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+bayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+bayButton.TextSize = 24
+bayButton.Font = Enum.Font.GothamBold
+bayButton.Text = "🪶 BAY  ◄  01  ►"
+bayButton.BorderSizePixel = 2
+bayButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+bayButton.Parent = mainFrame
+
+-- TỐC ĐỘ Button
+local speedButton = Instance.new("TextButton")
+speedButton.Name = "SpeedButton"
+speedButton.Size = UDim2.new(0.9, 0, 0, 80)
+speedButton.Position = UDim2.new(0.05, 0, 0, 160)
+speedButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedButton.TextSize = 24
+speedButton.Font = Enum.Font.GothamBold
+speedButton.Text = "⏱️ TỐC ĐỘ  ◄  05  ►"
+speedButton.BorderSizePixel = 2
+speedButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+speedButton.Parent = mainFrame
+
+-- PHONG MÀU Button
+local colorButton = Instance.new("TextButton")
+colorButton.Name = "ColorButton"
+colorButton.Size = UDim2.new(0.9, 0, 0, 80)
+colorButton.Position = UDim2.new(0.05, 0, 0, 250)
+colorButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+colorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+colorButton.TextSize = 24
+colorButton.Font = Enum.Font.GothamBold
+colorButton.Text = "🎨 PHONG MÀU  ◄  03  ►"
+colorButton.BorderSizePixel = 2
+colorButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+colorButton.Parent = mainFrame
+
+-- EXIT Button
+local exitButton = Instance.new("TextButton")
+exitButton.Name = "ExitButton"
+exitButton.Size = UDim2.new(0.9, 0, 0, 80)
+exitButton.Position = UDim2.new(0.05, 0, 0, 340)
+exitButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+exitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+exitButton.TextSize = 24
+exitButton.Font = Enum.Font.GothamBold
+exitButton.Text = "⏻ EXIT"
+exitButton.BorderSizePixel = 2
+exitButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+exitButton.Parent = mainFrame
+
+-- Flight variables
+local flying = false
+local flySpeed = 50
+local bodyVelocity = nil
+local bodyGyro = nil
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Start flight function
+local function startFlight()
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if bodyGyro then bodyGyro:Destroy() end
+    
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = rootPart
+    
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+    bodyGyro.CFrame = rootPart.CFrame
+    bodyGyro.Parent = rootPart
+    
+    humanoid.PlatformStand = true
+    flying = true
+end
+
+-- Stop flight function
+local function stopFlight()
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+    humanoid.PlatformStand = false
+    flying = false
+end
+
+-- BAY button click
+bayButton.MouseButton1Click:Connect(function()
+    if flying then
+        stopFlight()
+        bayButton.Text = "🪶 BAY  ◄  01  ►"
+    else
+        startFlight()
+        bayButton.Text = "🪶 BAY (ON)  ◄  01  ►"
+    end
+end)
+
+-- TỐC ĐỘ + button
+speedButton.MouseButton1Click:Connect(function()
+    flySpeed = flySpeed + 5
+    speedButton.Text = "⏱️ TỐC ĐỘ  ◄  " .. flySpeed .. "  ►"
+end)
+
+-- PHONG MÀU button
+colorButton.MouseButton1Click:Connect(function()
+    colorButton.BackgroundColor3 = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
+end)
+
+-- EXIT button
+exitButton.MouseButton1Click:Connect(function()
+    stopFlight()
+    screenGui:Destroy()
+end)
+
+-- Update flight movement
+game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+    if not flying or not bodyVelocity then return end
+    
+    local moveDirection = Vector3.new(0, 0, 0)
+    local inputService = game:GetService("UserInputService")
+    
+    if inputService:IsKeyDown(Enum.KeyCode.W) then
+        moveDirection = moveDirection + rootPart.CFrame.LookVector
+    end
+    if inputService:IsKeyDown(Enum.KeyCode.S) then
+        moveDirection = moveDirection - rootPart.CFrame.LookVector
+    end
+    if inputService:IsKeyDown(Enum.KeyCode.A) then
+        moveDirection = moveDirection - rootPart.CFrame.RightVector
+    end
+    if inputService:IsKeyDown(Enum.KeyCode.D) then
+        moveDirection = moveDirection + rootPart.CFrame.RightVector
+    end
+    
+    if moveDirection.Magnitude > 0 then
+        moveDirection = moveDirection.Unit * flySpeed
+    end
+    
+    if inputService:IsKeyDown(Enum.KeyCode.Q) then
+        moveDirection = moveDirection + Vector3.new(0, flySpeed, 0)
+    end
+    if inputService:IsKeyDown(Enum.KeyCode.E) then
+        moveDirection = moveDirection - Vector3.new(0, flySpeed, 0)
+    end
+    
+    bodyVelocity.Velocity = moveDirection
+    bodyGyro.CFrame = rootPart.CFrame
+end)
+
+-- Cleanup on death
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+    flying = false
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+end)
