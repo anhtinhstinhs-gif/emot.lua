@@ -1,4 +1,4 @@
--- Menu GUI for Roblox Flight Script
+-- Menu GUI for Roblox Flight Script with Minimize/Maximize
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -8,15 +8,78 @@ screenGui.Name = "FlightMenu"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Main menu frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 400, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
-mainFrame.BorderSizePixel = 3
-mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-mainFrame.Parent = screenGui
+-- Variables
+local isExpanded = false
+local flying = false
+local flySpeed = 50
+local bodyVelocity = nil
+local bodyGyro = nil
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ===== MINIMIZED MENU (Small) =====
+local minFrame = Instance.new("Frame")
+minFrame.Name = "MinFrame"
+minFrame.Size = UDim2.new(0, 120, 0, 50)
+minFrame.Position = UDim2.new(0.02, 0, 0.5, -25)
+minFrame.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+minFrame.BorderSizePixel = 3
+minFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+minFrame.Parent = screenGui
+
+-- Close button (X)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseBtn"
+closeBtn.Size = UDim2.new(0, 40, 1, 0)
+closeBtn.Position = UDim2.new(0, 0, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 100)
+closeBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+closeBtn.TextSize = 24
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "✕"
+closeBtn.BorderSizePixel = 2
+closeBtn.BorderColor3 = Color3.fromRGB(0, 0, 0)
+closeBtn.Parent = minFrame
+
+-- Expand button (-)
+local expandBtn = Instance.new("TextButton")
+expandBtn.Name = "ExpandBtn"
+expandBtn.Size = UDim2.new(0, 40, 1, 0)
+expandBtn.Position = UDim2.new(0.33, 0, 0, 0)
+expandBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 100)
+expandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+expandBtn.TextSize = 28
+expandBtn.Font = Enum.Font.GothamBold
+expandBtn.Text = "−"
+expandBtn.BorderSizePixel = 2
+expandBtn.BorderColor3 = Color3.fromRGB(0, 0, 0)
+expandBtn.Parent = minFrame
+
+-- Menu label
+local menuLabel = Instance.new("TextLabel")
+menuLabel.Name = "MenuLabel"
+menuLabel.Size = UDim2.new(0, 40, 1, 0)
+menuLabel.Position = UDim2.new(0.66, 0, 0, 0)
+menuLabel.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+menuLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+menuLabel.TextSize = 16
+menuLabel.Font = Enum.Font.GothamBold
+menuLabel.Text = "⚙️"
+menuLabel.BorderSizePixel = 0
+menuLabel.Parent = minFrame
+
+-- ===== EXPANDED MENU (Large) =====
+local maxFrame = Instance.new("Frame")
+maxFrame.Name = "MaxFrame"
+maxFrame.Size = UDim2.new(0, 400, 0, 500)
+maxFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+maxFrame.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+maxFrame.BorderSizePixel = 3
+maxFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+maxFrame.Visible = false
+maxFrame.Parent = screenGui
 
 -- Title
 local title = Instance.new("TextLabel")
@@ -29,7 +92,7 @@ title.TextSize = 32
 title.Font = Enum.Font.GothamBold
 title.Text = "MENU"
 title.BorderSizePixel = 0
-title.Parent = mainFrame
+title.Parent = maxFrame
 
 -- BAY Button
 local bayButton = Instance.new("TextButton")
@@ -43,7 +106,7 @@ bayButton.Font = Enum.Font.GothamBold
 bayButton.Text = "🪶 BAY  ◄  01  ►"
 bayButton.BorderSizePixel = 2
 bayButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-bayButton.Parent = mainFrame
+bayButton.Parent = maxFrame
 
 -- TỐC ĐỘ Button
 local speedButton = Instance.new("TextButton")
@@ -57,7 +120,7 @@ speedButton.Font = Enum.Font.GothamBold
 speedButton.Text = "⏱️ TỐC ĐỘ  ◄  05  ►"
 speedButton.BorderSizePixel = 2
 speedButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-speedButton.Parent = mainFrame
+speedButton.Parent = maxFrame
 
 -- PHONG MÀU Button
 local colorButton = Instance.new("TextButton")
@@ -71,7 +134,7 @@ colorButton.Font = Enum.Font.GothamBold
 colorButton.Text = "🎨 PHONG MÀU  ◄  03  ►"
 colorButton.BorderSizePixel = 2
 colorButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-colorButton.Parent = mainFrame
+colorButton.Parent = maxFrame
 
 -- EXIT Button
 local exitButton = Instance.new("TextButton")
@@ -85,17 +148,7 @@ exitButton.Font = Enum.Font.GothamBold
 exitButton.Text = "⏻ EXIT"
 exitButton.BorderSizePixel = 2
 exitButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-exitButton.Parent = mainFrame
-
--- Flight variables
-local flying = false
-local flySpeed = 50
-local bodyVelocity = nil
-local bodyGyro = nil
-
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
+exitButton.Parent = maxFrame
 
 -- Start flight function
 local function startFlight()
@@ -124,6 +177,24 @@ local function stopFlight()
     flying = false
 end
 
+-- Toggle expand/minimize
+local function toggleMenu()
+    isExpanded = not isExpanded
+    minFrame.Visible = not isExpanded
+    maxFrame.Visible = isExpanded
+end
+
+-- Close button click
+closeBtn.MouseButton1Click:Connect(function()
+    stopFlight()
+    screenGui:Destroy()
+end)
+
+-- Expand button click
+expandBtn.MouseButton1Click:Connect(function()
+    toggleMenu()
+end)
+
 -- BAY button click
 bayButton.MouseButton1Click:Connect(function()
     if flying then
@@ -135,18 +206,18 @@ bayButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- TỐC ĐỘ + button
+-- TỐC ĐỘ button click
 speedButton.MouseButton1Click:Connect(function()
     flySpeed = flySpeed + 5
     speedButton.Text = "⏱️ TỐC ĐỘ  ◄  " .. flySpeed .. "  ►"
 end)
 
--- PHONG MÀU button
+-- PHONG MÀU button click
 colorButton.MouseButton1Click:Connect(function()
-    colorButton.BackgroundColor3 = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
+    maxFrame.BackgroundColor3 = Color3.fromRGB(math.random(100, 200), 0, math.random(100, 200))
 end)
 
--- EXIT button
+-- EXIT button click
 exitButton.MouseButton1Click:Connect(function()
     stopFlight()
     screenGui:Destroy()
