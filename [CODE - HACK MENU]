@@ -1,28 +1,39 @@
--- Kế thừa các dịch vụ hệ thống trực tiếp từ mã nguồn gốc của game
+-- XÓA TOÀN BỘ CODE CŨ VÀ DÁN TOÀN BỘ ĐOẠN CODE DƯỚI ĐÂY VÀO EXECUTOR
+
 local v1 = game:GetService("ContextActionService")
 local v3 = game:GetService("Players")
 local v_u_4 = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = v3.LocalPlayer
 
--- Khai báo Remote Function spawn vật thể gốc từ game (v_u_9)
+-- Khai báo Remote Function spawn vật thể gốc và dữ liệu của game
 local v_u_9 = v_u_4:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
+local v_u_5 = require(v_u_4:WaitForChild("MenuToys"):WaitForChild("MenuToysData"))
+local v_u_29 = v_u_5.GetAllToysSortedByName() -- Danh sách toàn bộ Toy trong game
 
--- Cấu hình Action
+-- Cấu hình nút bấm
 local ACTION_NAME = "TaoNemNhanhAction"
 local isToggled = false
 local currentSpawnedToy = nil
 
--- TÊN VẬT THỂ MUỐN TRIỆU HỒI (Thay đổi tên này theo đúng tên Toy trong game của bạn)
-local TARGET_TOY_NAME = "Toy" 
+-- Hàm tìm kiếm món đồ chơi hợp lệ mà người chơi đang sở hữu để tránh bị Server từ chối
+local function getOwnedToyName()
+	-- Thử lấy vật thể đầu tiên trong danh sách dữ liệu gốc của game
+	if v_u_29 and #v_u_29 > 0 then
+		return v_u_29[1] 
+	end
+	return "Brick" -- Tên dự phòng nếu không tìm thấy dữ liệu
+end
 
--- Hàm reset trạng thái nút về ban đầu (1)
+local TARGET_TOY_NAME = getOwnedToyName()
+
+-- Hàm kiểm tra trạng thái vật thể để tự động reset trạng thái nút bấm (Quay lại 1)
 local function checkToyStatus()
 	if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(workspace) then
 		isToggled = false
 		local button = v1:GetButton(ACTION_NAME)
 		if button then
-			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu
+			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu (1)
 		end
 		currentSpawnedToy = nil
 	end
@@ -34,7 +45,7 @@ local function onButtonPress(actionName, inputState, inputObject)
 		local character = LocalPlayer.Character
 		if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 		
-		-- Kiểm tra trạng thái an toàn của vật thể cũ
+		-- Kiểm tra an toàn trạng thái vật thể trước khi xử lý
 		if isToggled then
 			checkToyStatus()
 		end
@@ -43,14 +54,14 @@ local function onButtonPress(actionName, inputState, inputObject)
 			-- TRẠNG THÁI 1: BẬT - Gọi Remote triệu hồi trực tiếp dưới chân
 			isToggled = true
 			
-			-- CẬP NHẬT TOẠ ĐỘ THỰC TẾ: Lấy vị trí ngay dưới chân của người chơi thay vì vị trí Camera cũ
+			-- Cập nhật tọa độ thực tế dưới chân người chơi tại thời điểm bấm
 			local hrp = character.HumanoidRootPart
-			local spawnCFrame = hrp.CFrame * CFrame.new(0, -3, 0) -- -3 studs theo trục Y để nằm ngay dưới chân
+			local spawnCFrame = hrp.CFrame * CFrame.new(0, -3, 0) -- Đưa tọa độ xuống dưới chân 3 studs
 			
 			-- Lấy hướng xoay mặc định của game giống hệt mã gốc
 			local rotatePart = workspace:WaitForChild("RotateOrientPart")
 			
-			-- Gọi trực tiếp Remote Function truyền toạ độ dưới chân vừa cập nhật
+			-- Gọi trực tiếp Remote Function truyền tọa độ dưới chân vừa cập nhật
 			local result = v_u_9:InvokeServer(TARGET_TOY_NAME, spawnCFrame, rotatePart.Orientation)
 			
 			if result == "SpawnedToy" then
@@ -77,7 +88,7 @@ local function onButtonPress(actionName, inputState, inputObject)
 					end
 				end)
 			else
-				-- Thất bại thì tự động reset nút về đỏ
+				-- Thất bại (Server từ chối) thì tự động reset nút về đỏ ngay lập tức
 				isToggled = false
 			end
 		else
@@ -97,17 +108,19 @@ local function onButtonPress(actionName, inputState, inputObject)
 	end
 end
 
--- Khởi tạo nút bấm màu đỏ trên điện thoại di động
+-- Tạo nút bấm vật lý màu đỏ dành riêng cho giao diện điện thoại
+v1:UnbindAction(ACTION_NAME) -- Xóa bỏ cấu hình cũ tránh trùng lặp
 v1:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
 
 local mobileButton = v1:GetButton(ACTION_NAME)
 if mobileButton then
 	mobileButton.Size = UDim2.new(0, 90, 0, 90)
-	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45)
-	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ chủ đạo
+	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Đặt ở góc trái màn hình điện thoại để dễ thao tác
+	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Thiết lập nút màu đỏ gốc
 	
-	-- Nhãn chữ "Tạo ném" trên nút
-	local titleLabel = Instance.new("TextLabel")
+	-- Tạo nhãn chữ "Tạo ném" trên nút bấm
+	local titleLabel = mobileButton:FindFirstChild("TitleLabel") or Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
 	titleLabel.Size = UDim2.new(1, 0, 1, 0)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "Tạo ném"
