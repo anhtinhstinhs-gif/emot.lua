@@ -1,4 +1,4 @@
--- XÓA SẠCH CODE CŨ VÀ DÁN TOÀN BỘ CODE DƯỚI ĐÂY
+-- XÓA SẠCH CODE CŨ VÀ DÂN TOÀN BỘ CODE DƯỚI ĐÂY
 
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -6,14 +6,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
--- 1. Khai báo Remote Event từ đoạn code 1 của bạn
+-- 1. Khai báo Remote Event từ game
 local ClickActionEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClickAction")
 
--- 2. Khai báo MainUI Controller từ đoạn code 2 của bạn
+-- 2. Khai báo MainUI Controller
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local MainUIController = PlayerGui:WaitForChild("MainUI"):WaitForChild("MainUIController")
 
--- 3. Khởi chạy Modules Runtime từ đoạn code 3 của bạn để đồng bộ hệ thống game
+-- 3. Khởi chạy Modules Runtime
 local ModulesFolder = ReplicatedStorage:WaitForChild("Modules")
 local MainUIRuntime = require(ModulesFolder:WaitForChild("MainUIRuntime"))
 task.spawn(function()
@@ -26,15 +26,15 @@ end)
 local ACTION_NAME = "AutoClickAction"
 local isAutoActive = false
 
--- Hàm chạy vòng lặp kích hoạt liên tục (Auto Click)
+-- Hàm chạy vòng lặp kích hoạt liên tục KHÔNG CÓ THỜI GIAN NGƯNG
 local function startAutoLoop()
     task.spawn(function()
         while isAutoActive do
-            -- Gọi liên tục ClickAction Event không ngừng nghỉ
+            -- Gọi liên tiếp không ngừng nghỉ bằng cách lặp trực tiếp trong mỗi khung hình hoặc không delay
             pcall(function()
                 ClickActionEvent:FireServer()
             end)
-            task.wait(0.1) -- Khoảng thời gian giãn cách giữa mỗi lần click (0.1 giây), có thể chỉnh nhỏ hơn nếu muốn nhanh hơn
+            task.wait() -- Tốc độ tối đa của game (khoảng 60 lần/giây hoặc nhanh hơn tùy luồng xử lý)
         end
     end)
 end
@@ -43,20 +43,20 @@ end
 local function onButtonPress(actionName, inputState, inputObject)
     if inputState == Enum.UserInputState.Begin then
         if not isAutoActive then
-            -- TRẠNG THÁI 1: BẬT - Kích hoạt Auto liên tục
+            -- TRẠNG THÁI: BẬT - Kích hoạt Auto liên tục
             isAutoActive = true
             startAutoLoop()
             
-            -- Đổi màu nút sang màu xám/tối để báo hiệu đang chạy Auto
+            -- Đổi màu nút sang màu XANH LÁ (Green) khi đang hoạt động
             local button = ContextActionService:GetButton(ACTION_NAME)
             if button then
-                button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
             end
         else
-            -- TRẠNG THÁI QUAY LẠI 1: TẮT - Ngừng chạy Auto
+            -- TRẠNG THÁI: TẮT - Ngừng chạy Auto
             isAutoActive = false
             
-            -- Đặt lại nút về màu đỏ ban đầu
+            -- Đặt lại nút về màu ĐỎ (Red) ban đầu
             local button = ContextActionService:GetButton(ACTION_NAME)
             if button then
                 button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
@@ -73,9 +73,9 @@ local mobileButton = ContextActionService:GetButton(ACTION_NAME)
 if mobileButton then
     mobileButton.Size = UDim2.new(0, 90, 0, 90)
     mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Vị trí thuận tiện trên màn hình điện thoại
-    mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Nút màu đỏ đặc trưng
+    mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Nút mặc định ban đầu màu ĐỎ
     
-    -- Tạo nhãn chữ hiển thị "Tạo ném" hoặc "Auto Click"
+    -- Tạo nhãn chữ hiển thị "Auto Click"
     local titleLabel = mobileButton:FindFirstChild("TitleLabel") or Instance.new("TextLabel")
     titleLabel.Name = "TitleLabel"
     titleLabel.Size = UDim2.new(1, 0, 1, 0)
