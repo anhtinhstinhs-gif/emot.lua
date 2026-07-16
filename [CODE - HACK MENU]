@@ -1,10 +1,28 @@
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local LocalPlayer = Players.LocalPlayer
+local SpawnToyRF = ReplicatedStorage:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
+
+-- Cấu hình
 local ACTION_NAME = "TaoNemAction"
+local TOY_NAME = "VatTheNem" -- Thay thế bằng tên chính xác của Toy trong game (ví dụ: "Brick", "Ball",...)
 local isToggled = false
-local spawnedPart = nil
+local currentSpawnedToy = nil
+
+-- Hàm kiểm tra xem vật thể đã bị mất chưa
+local function checkToyStatus()
+	-- Nếu vật thể không còn tồn tại trong Workspace, reset nút về ban đầu
+	if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(workspace) then
+		isToggled = false
+		local button = ContextActionService:GetButton(ACTION_NAME)
+		if button then
+			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu (1)
+		end
+		currentSpawnedToy = nil
+	end
+end
 
 -- Hàm xử lý khi bấm nút
 local function onButtonPress(actionName, inputState, inputObject)
@@ -12,45 +30,55 @@ local function onButtonPress(actionName, inputState, inputObject)
 		local character = LocalPlayer.Character
 		if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 		
+		-- Kiểm tra xem vật thể cũ có bị xóa ngoài ý muốn không
+		if isToggled then
+			checkToyStatus()
+		end
+
 		if not isToggled then
-			-- TRẠNG THÁI 1: BẬT (Xuất hiện vật thể dưới chân)
-			isToggled = true
+			-- [TRẠNG THÁI 1]: Bật nút và tạo vật thể dưới chân thông qua Remote của game
+			local cameraCFrame = workspace.CurrentCamera.CFrame
+			local rotatePart = workspace:WaitForChild("RotateOrientPart")
 			
-			-- Tạo vật thể (Ví dụ: một khối Part màu đỏ làm vật ném)
-			spawnedPart = Instance.new("Part")
-			spawnedPart.Name = "VatTheNem"
-			spawnedPart.Size = Vector3.new(2, 2, 2)
-			spawnedPart.Color = Color3.fromRGB(255, 0, 0)
-			spawnedPart.Material = Enum.Material.Neon
+			-- Gọi Remote Function gốc của game để tạo vật thể dưới chân
+			local success = SpawnToyRF:InvokeServer(TOY_NAME, cameraCFrame, rotatePart.Orientation)
 			
-			-- Đặt vị trí ngay dưới chân nhân vật (HRP)
-			local hrp = character.HumanoidRootPart
-			spawnedPart.CFrame = hrp.CFrame * CFrame.new(0, -2.5, 0)
-			spawnedPart.Parent = workspace
-			
-			-- Đổi màu nút trên điện thoại sang màu xám để báo hiệu đang hoạt động
-			local button = ContextActionService:GetButton(ACTION_NAME)
-			if button then
-				button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-			end
-			
-			-- Theo dõi nếu vật thể bị mất/xóa thì tự động quay lại Trạng thái ban đầu
-			spawnedPart.Destroying:Connect(function()
-				isToggled = false
-				local btn = ContextActionService:GetButton(ACTION_NAME)
-				if btn then
-					btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ
+			if success == "SpawnedToy" then
+				isToggled = true
+				
+				-- Tìm kiếm vật thể vừa tạo trong Workspace để theo dõi
+				-- (Hệ thống game thường đặt vật thể mới spawn gần người chơi hoặc trong một Folder riêng)
+				task.spawn(function()
+					task.wait(0.1)
+					for _, child in pairs(workspace:GetChildren()) do
+						if child.Name == TOY_NAME and (child:GetPivot().Position - character.HumanoidRootPart.Position).Magnitude < 15 then
+							currentSpawnedToy = child
+							
+							-- Lắng nghe sự kiện vật thể bị hủy (mất hết) để quay về trạng thái ban đầu (1)
+							currentSpawnedToy.Destroying:Connect(function()
+								task.wait(0.1)
+								checkToyStatus()
+							end)
+							break
+						end
+					end
+				end)
+
+				-- Đổi màu nút sang màu xám/tối khi đang hoạt động
+				local button = ContextActionService:GetButton(ACTION_NAME)
+				if button then
+					button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 				end
-			end)
+			end
 		else
-			-- TRẠNG THÁI QUAY LẠI BAN ĐẦU: TẮT (Xóa vật thể cũ để chuẩn bị cho lần bấm tiếp theo)
-			if spawnedPart then
-				spawnedPart:Destroy()
-				spawnedPart = nil
+			-- [TRẠNG THÁI QUAY LẠI 1]: Nếu bấm lần nữa, xóa vật thể hiện tại đi để reset
+			if currentSpawnedToy then
+				currentSpawnedToy:Destroy()
 			end
 			isToggled = false
+			currentSpawnedToy = nil
 			
-			-- Đặt lại màu đỏ cho nút bấm
+			-- Đặt nút quay lại màu đỏ ban đầu
 			local button = ContextActionService:GetButton(ACTION_NAME)
 			if button then
 				button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
@@ -59,16 +87,16 @@ local function onButtonPress(actionName, inputState, inputObject)
 	end
 end
 
--- Khởi tạo nút bấm chuyên dụng cho thiết bị di động (Mobile Button)
+-- Tạo nút bấm màu đỏ trên điện thoại di động
 ContextActionService:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
 
--- Cấu hình giao diện nút bấm điện thoại
 local mobileButton = ContextActionService:GetButton(ACTION_NAME)
 if mobileButton then
-	mobileButton.Size = UDim2.new(0, 80, 0, 80)
-	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Nút màu đỏ
+	mobileButton.Size = UDim2.new(0, 90, 0, 90)
+	mobileButton.Position = UDim2.new(0.5, -45, 0.5, -45) -- Vị trí hiển thị trên màn hình
+	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ chủ đạo
 	
-	-- Thiết lập tên hiển thị của nút là "Tạo Ném"
+	-- Nhãn chữ "Tạo ném"
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 1, 0)
 	titleLabel.BackgroundTransparency = 1
