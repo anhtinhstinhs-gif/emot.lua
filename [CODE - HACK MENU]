@@ -1,131 +1,88 @@
--- XÓA TOÀN BỘ CODE CŨ VÀ DÁN TOÀN BỘ ĐOẠN CODE DƯỚI ĐÂY VÀO EXECUTOR
+-- XÓA SẠCH CODE CŨ VÀ DÁN TOÀN BỘ CODE DƯỚI ĐÂY
 
-local v1 = game:GetService("ContextActionService")
-local v3 = game:GetService("Players")
-local v_u_4 = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local LocalPlayer = v3.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
--- Khai báo Remote Function spawn vật thể gốc và dữ liệu của game
-local v_u_9 = v_u_4:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
-local v_u_5 = require(v_u_4:WaitForChild("MenuToys"):WaitForChild("MenuToysData"))
-local v_u_29 = v_u_5.GetAllToysSortedByName() -- Danh sách toàn bộ Toy trong game
+-- 1. Khai báo Remote Event từ đoạn code 1 của bạn
+local ClickActionEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClickAction")
 
--- Cấu hình nút bấm
-local ACTION_NAME = "TaoNemNhanhAction"
-local isToggled = false
-local currentSpawnedToy = nil
+-- 2. Khai báo MainUI Controller từ đoạn code 2 của bạn
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local MainUIController = PlayerGui:WaitForChild("MainUI"):WaitForChild("MainUIController")
 
--- Hàm tìm kiếm món đồ chơi hợp lệ mà người chơi đang sở hữu để tránh bị Server từ chối
-local function getOwnedToyName()
-	-- Thử lấy vật thể đầu tiên trong danh sách dữ liệu gốc của game
-	if v_u_29 and #v_u_29 > 0 then
-		return v_u_29[1] 
-	end
-	return "Brick" -- Tên dự phòng nếu không tìm thấy dữ liệu
+-- 3. Khởi chạy Modules Runtime từ đoạn code 3 của bạn để đồng bộ hệ thống game
+local ModulesFolder = ReplicatedStorage:WaitForChild("Modules")
+local MainUIRuntime = require(ModulesFolder:WaitForChild("MainUIRuntime"))
+task.spawn(function()
+    pcall(function()
+        MainUIRuntime.init()
+    end)
+end)
+
+-- Cấu hình trạng thái Auto Click
+local ACTION_NAME = "AutoClickAction"
+local isAutoActive = false
+
+-- Hàm chạy vòng lặp kích hoạt liên tục (Auto Click)
+local function startAutoLoop()
+    task.spawn(function()
+        while isAutoActive do
+            -- Gọi liên tục ClickAction Event không ngừng nghỉ
+            pcall(function()
+                ClickActionEvent:FireServer()
+            end)
+            task.wait(0.1) -- Khoảng thời gian giãn cách giữa mỗi lần click (0.1 giây), có thể chỉnh nhỏ hơn nếu muốn nhanh hơn
+        end
+    end)
 end
 
-local TARGET_TOY_NAME = getOwnedToyName()
-
--- Hàm kiểm tra trạng thái vật thể để tự động reset trạng thái nút bấm (Quay lại 1)
-local function checkToyStatus()
-	if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(workspace) then
-		isToggled = false
-		local button = v1:GetButton(ACTION_NAME)
-		if button then
-			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu (1)
-		end
-		currentSpawnedToy = nil
-	end
-end
-
--- Hàm xử lý kích hoạt triệu hồi lập tức ngay dưới chân người chơi
+-- Hàm xử lý khi bấm nút bật/tắt
 local function onButtonPress(actionName, inputState, inputObject)
-	if inputState == Enum.UserInputState.Begin then
-		local character = LocalPlayer.Character
-		if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-		
-		-- Kiểm tra an toàn trạng thái vật thể trước khi xử lý
-		if isToggled then
-			checkToyStatus()
-		end
-
-		if not isToggled then
-			-- TRẠNG THÁI 1: BẬT - Gọi Remote triệu hồi trực tiếp dưới chân
-			isToggled = true
-			
-			-- Cập nhật tọa độ thực tế dưới chân người chơi tại thời điểm bấm
-			local hrp = character.HumanoidRootPart
-			local spawnCFrame = hrp.CFrame * CFrame.new(0, -3, 0) -- Đưa tọa độ xuống dưới chân 3 studs
-			
-			-- Lấy hướng xoay mặc định của game giống hệt mã gốc
-			local rotatePart = workspace:WaitForChild("RotateOrientPart")
-			
-			-- Gọi trực tiếp Remote Function truyền tọa độ dưới chân vừa cập nhật
-			local result = v_u_9:InvokeServer(TARGET_TOY_NAME, spawnCFrame, rotatePart.Orientation)
-			
-			if result == "SpawnedToy" then
-				-- Đổi màu nút sang xám báo hiệu đang hoạt động
-				local button = v1:GetButton(ACTION_NAME)
-				if button then
-					button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-				end
-				
-				-- Quét nhanh Workspace để lấy Instance của vật thể vừa tạo ngay dưới chân
-				task.spawn(function()
-					task.wait(0.05)
-					for _, child in pairs(workspace:GetChildren()) do
-						if child.Name == TARGET_TOY_NAME and (child:GetPivot().Position - hrp.Position).Magnitude < 15 then
-							currentSpawnedToy = child
-							
-							-- Khi vật thể bị biến mất/hủy, tự động trả nút về trạng thái ban đầu (1)
-							currentSpawnedToy.Destroying:Connect(function()
-								task.wait(0.05)
-								checkToyStatus()
-							end)
-							break
-						end
-					end
-				end)
-			else
-				-- Thất bại (Server từ chối) thì tự động reset nút về đỏ ngay lập tức
-				isToggled = false
-			end
-		else
-			-- TRẠNG THÁI QUAY LẠI 1: TẮT - Xóa vật thể cũ để chuẩn bị cho lần bấm tiếp theo
-			if currentSpawnedToy then
-				currentSpawnedToy:Destroy()
-			end
-			isToggled = false
-			currentSpawnedToy = nil
-			
-			-- Đặt lại nút màu đỏ
-			local button = v1:GetButton(ACTION_NAME)
-			if button then
-				button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-			end
-		end
-	end
+    if inputState == Enum.UserInputState.Begin then
+        if not isAutoActive then
+            -- TRẠNG THÁI 1: BẬT - Kích hoạt Auto liên tục
+            isAutoActive = true
+            startAutoLoop()
+            
+            -- Đổi màu nút sang màu xám/tối để báo hiệu đang chạy Auto
+            local button = ContextActionService:GetButton(ACTION_NAME)
+            if button then
+                button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            end
+        else
+            -- TRẠNG THÁI QUAY LẠI 1: TẮT - Ngừng chạy Auto
+            isAutoActive = false
+            
+            -- Đặt lại nút về màu đỏ ban đầu
+            local button = ContextActionService:GetButton(ACTION_NAME)
+            if button then
+                button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            end
+        end
+    end
 end
 
--- Tạo nút bấm vật lý màu đỏ dành riêng cho giao diện điện thoại
-v1:UnbindAction(ACTION_NAME) -- Xóa bỏ cấu hình cũ tránh trùng lặp
-v1:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
+-- Khởi tạo nút bấm màu đỏ trên thiết bị di động
+ContextActionService:UnbindAction(ACTION_NAME) -- Xóa bỏ cấu hình cũ tránh trùng lặp
+ContextActionService:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
 
-local mobileButton = v1:GetButton(ACTION_NAME)
+local mobileButton = ContextActionService:GetButton(ACTION_NAME)
 if mobileButton then
-	mobileButton.Size = UDim2.new(0, 90, 0, 90)
-	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Đặt ở góc trái màn hình điện thoại để dễ thao tác
-	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Thiết lập nút màu đỏ gốc
-	
-	-- Tạo nhãn chữ "Tạo ném" trên nút bấm
-	local titleLabel = mobileButton:FindFirstChild("TitleLabel") or Instance.new("TextLabel")
-	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, 0, 1, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "Tạo ném"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.Font = Enum.Font.SourceSansBold
-	titleLabel.TextSize = 16
-	titleLabel.Parent = mobileButton
+    mobileButton.Size = UDim2.new(0, 90, 0, 90)
+    mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Vị trí thuận tiện trên màn hình điện thoại
+    mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Nút màu đỏ đặc trưng
+    
+    -- Tạo nhãn chữ hiển thị "Tạo ném" hoặc "Auto Click"
+    local titleLabel = mobileButton:FindFirstChild("TitleLabel") or Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Size = UDim2.new(1, 0, 1, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "Auto Click"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.SourceSansBold
+    titleLabel.TextSize = 16
+    titleLabel.Parent = mobileButton
 end
