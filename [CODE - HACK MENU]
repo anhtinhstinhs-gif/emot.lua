@@ -1,0 +1,310 @@
+--[[
+    SIMPLE SPY MOBILE - FIXED VERSION
+    Đã sửa lỗi không hiển thị
+    Hoạt động trên cả PC và Mobile
+]]
+
+loadstring([[
+    local Player = game:GetService("Players").LocalPlayer
+    local GuiService = game:GetService("GuiService")
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    
+    -- Kiểm tra và xóa GUI cũ nếu có
+    if Player.PlayerGui:FindFirstChild("SimpleSpyGUI") then
+        Player.PlayerGui:FindFirstChild("SimpleSpyGUI"):Destroy()
+        wait(0.1)
+    end
+    
+    -- Tạo GUI chính
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "SimpleSpyGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+    
+    -- Tạo Frame chính
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 350, 0, 450)
+    MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BorderSizePixel = 2
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+    
+    -- Bo góc
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = MainFrame
+    
+    -- Tiêu đề
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Position = UDim2.new(0, 0, 0, 0)
+    Title.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+    Title.BackgroundTransparency = 0.3
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "🔍 SIMPLE SPY"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 22
+    Title.Parent = MainFrame
+    
+    -- Nút đóng (X)
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 35, 0, 35)
+    CloseButton.Position = UDim2.new(1, -40, 0, 3)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Text = "✕"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 18
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Parent = MainFrame
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 5)
+    CloseCorner.Parent = CloseButton
+    
+    -- Nút thu nhỏ (Minimize)
+    local MinButton = Instance.new("TextButton")
+    MinButton.Size = UDim2.new(0, 35, 0, 35)
+    MinButton.Position = UDim2.new(1, -80, 0, 3)
+    MinButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    MinButton.Font = Enum.Font.GothamBold
+    MinButton.Text = "−"
+    MinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinButton.TextSize = 22
+    MinButton.BorderSizePixel = 0
+    MinButton.Parent = MainFrame
+    
+    local MinCorner = Instance.new("UICorner")
+    MinCorner.CornerRadius = UDim.new(0, 5)
+    MinCorner.Parent = MinButton
+    
+    -- Scroll frame để chứa nội dung
+    local ScrollFrame = Instance.new("ScrollingFrame")
+    ScrollFrame.Size = UDim2.new(1, -20, 1, -80)
+    ScrollFrame.Position = UDim2.new(0, 10, 0, 50)
+    ScrollFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    ScrollFrame.BackgroundTransparency = 0.5
+    ScrollFrame.BorderSizePixel = 1
+    ScrollFrame.BorderColor3 = Color3.fromRGB(50, 50, 70)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ScrollFrame.ScrollBarThickness = 6
+    ScrollFrame.Parent = MainFrame
+    
+    local ScrollCorner = Instance.new("UICorner")
+    ScrollCorner.CornerRadius = UDim.new(0, 5)
+    ScrollCorner.Parent = ScrollFrame
+    
+    -- Nội dung mẫu
+    local function addContent(text, color)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 25)
+        label.Position = UDim2.new(0, 5, 0, #ScrollFrame:GetChildren() * 25 + 5)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.Gotham
+        label.Text = text
+        label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+        label.TextSize = 14
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = ScrollFrame
+        
+        -- Cập nhật CanvasSize
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, #ScrollFrame:GetChildren() * 25 + 10)
+    end
+    
+    -- Thêm nội dung demo
+    addContent("✅ Simple Spy đã được tải!", Color3.fromRGB(0, 255, 0))
+    addContent("📌 Nhấn F để mở/đóng menu", Color3.fromRGB(255, 255, 0))
+    addContent("🔄 Đang theo dõi Remote Events...", Color3.fromRGB(100, 200, 255))
+    addContent("")
+    addContent("📊 Thông tin:", Color3.fromRGB(255, 200, 100))
+    addContent("  • Game: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name, Color3.fromRGB(200, 200, 200))
+    addContent("  • Player: " .. Player.Name, Color3.fromRGB(200, 200, 200))
+    addContent("  • Ping: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem.DataPing:GetValue()) .. "ms", Color3.fromRGB(200, 200, 200))
+    addContent("")
+    addContent("🎯 Remote Events detected:", Color3.fromRGB(255, 200, 100))
+    
+    -- Quét Remote Events
+    local function scanRemotes()
+        local remoteCount = 0
+        for _, service in pairs(game:GetDescendants()) do
+            if service:IsA("RemoteEvent") or service:IsA("RemoteFunction") then
+                remoteCount = remoteCount + 1
+                if remoteCount <= 20 then
+                    addContent("  • " .. service.Name, Color3.fromRGB(150, 200, 255))
+                end
+            end
+        end
+        if remoteCount > 20 then
+            addContent("  • ... và " .. (remoteCount - 20) .. " remotes khác", Color3.fromRGB(150, 150, 150))
+        end
+        addContent("  Tổng: " .. remoteCount .. " remotes", Color3.fromRGB(255, 200, 100))
+    end
+    
+    -- Chạy quét sau 1 giây
+    task.wait(0.5)
+    scanRemotes()
+    
+    -- Nút Refresh
+    local RefreshButton = Instance.new("TextButton")
+    RefreshButton.Size = UDim2.new(0, 80, 0, 30)
+    RefreshButton.Position = UDim2.new(0, 10, 1, -35)
+    RefreshButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    RefreshButton.Font = Enum.Font.GothamBold
+    RefreshButton.Text = "⟳ REFRESH"
+    RefreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RefreshButton.TextSize = 14
+    RefreshButton.BorderSizePixel = 0
+    RefreshButton.Parent = MainFrame
+    
+    local RefreshCorner = Instance.new("UICorner")
+    RefreshCorner.CornerRadius = UDim.new(0, 5)
+    RefreshCorner.Parent = RefreshButton
+    
+    RefreshButton.MouseButton1Click:Connect(function()
+        -- Xóa nội dung cũ
+        for _, child in pairs(ScrollFrame:GetChildren()) do
+            if child:IsA("TextLabel") then
+                child:Destroy()
+            end
+        end
+        ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        
+        -- Thêm lại nội dung
+        addContent("🔄 Đang refresh...", Color3.fromRGB(255, 255, 0))
+        task.wait(0.3)
+        addContent("✅ Refresh thành công!", Color3.fromRGB(0, 255, 0))
+        addContent("📊 Thông tin:", Color3.fromRGB(255, 200, 100))
+        addContent("  • Game: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name, Color3.fromRGB(200, 200, 200))
+        addContent("  • Player: " .. Player.Name, Color3.fromRGB(200, 200, 200))
+        addContent("")
+        addContent("🎯 Remote Events:", Color3.fromRGB(255, 200, 100))
+        scanRemotes()
+    end)
+    
+    -- Sự kiện đóng
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+    
+    -- Sự kiện thu nhỏ
+    local minimized = false
+    MinButton.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            MainFrame.Size = UDim2.new(0, 350, 0, 50)
+            ScrollFrame.Visible = false
+            RefreshButton.Visible = false
+            MinButton.Text = "+"
+        else
+            MainFrame.Size = UDim2.new(0, 350, 0, 450)
+            ScrollFrame.Visible = true
+            RefreshButton.Visible = true
+            MinButton.Text = "−"
+        end
+    end)
+    
+    -- Kéo thả menu
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    Title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+    
+    Title.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Phím tắt: F để mở/đóng
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.F then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end)
+    
+    -- Bắt Remote Events (Spy)
+    local function spyRemote(event)
+        if event:IsA("RemoteEvent") or event:IsA("RemoteFunction") then
+            local oldFire = event.FireServer
+            local oldInvoke = event.InvokeServer
+            
+            if event:IsA("RemoteEvent") then
+                event.FireServer = function(self, ...)
+                    local args = {...}
+                    local msg = "📤 " .. self.Name .. " fired with: "
+                    for i, v in pairs(args) do
+                        msg = msg .. tostring(v) .. (i < #args and ", " or "")
+                    end
+                    print(msg)
+                    addContent(msg, Color3.fromRGB(100, 255, 100))
+                    return oldFire(self, unpack(args))
+                end
+            end
+            
+            if event:IsA("RemoteFunction") then
+                event.InvokeServer = function(self, ...)
+                    local args = {...}
+                    local msg = "📤 " .. self.Name .. " invoked with: "
+                    for i, v in pairs(args) do
+                        msg = msg .. tostring(v) .. (i < #args and ", " or "")
+                    end
+                    print(msg)
+                    addContent(msg, Color3.fromRGB(100, 255, 200))
+                    return oldInvoke(self, unpack(args))
+                end
+            end
+        end
+    end
+    
+    -- Quét và spy tất cả remotes
+    for _, service in pairs(game:GetDescendants()) do
+        spyRemote(service)
+    end
+    
+    -- Spy remotes mới được tạo
+    game.DescendantAdded:Connect(function(descendant)
+        spyRemote(descendant)
+    end)
+    
+    print("✅ Simple Spy Mobile đã được tải thành công!")
+    print("📌 Nhấn F để ẩn/hiện menu")
+    
+    -- Thông báo trên màn hình
+    local notif = Instance.new("TextLabel")
+    notif.Size = UDim2.new(0, 300, 0, 35)
+    notif.Position = UDim2.new(0.5, -150, 0.3, 0)
+    notif.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    notif.BackgroundTransparency = 0.5
+    notif.Font = Enum.Font.GothamBold
+    notif.Text = "✅ Simple Spy đã tải! Nhấn F"
+    notif.TextColor3 = Color3.fromRGB(0, 255, 0)
+    notif.TextSize = 16
+    notif.Parent = ScreenGui
+    
+    game:GetService("Debris"):AddItem(notif, 3)
+]])()
