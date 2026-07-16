@@ -1,146 +1,115 @@
-local ContextActionService = game:GetService("ContextActionService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+-- Kế thừa các dịch vụ và biến hệ thống trực tiếp từ mã nguồn gốc của game
+local v1 = game:GetService("ContextActionService")
+local v3 = game:GetService("Players")
+local v_u_4 = game:GetService("ReplicatedStorage")
 
-local LocalPlayer = Players.LocalPlayer
+local LocalPlayer = v3.LocalPlayer
 
--- KIỂM TRA REMOTE FUNCTION CÓ TỒN TẠI KHÔNG
-local MenuToys = ReplicatedStorage:FindFirstChild("MenuToys")
-if not MenuToys then
-    warn("❌ Không tìm thấy 'MenuToys' trong ReplicatedStorage!")
-    return
-end
+-- Khai báo Remote Function spawn vật thể gốc từ game của bạn (v_u_9 trong mã nguồn gốc)
+local v_u_9 = v_u_4:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
 
-local SpawnToyRF = MenuToys:FindFirstChild("SpawnToyRemoteFunction")
-if not SpawnToyRF then
-    warn("❌ Không tìm thấy 'SpawnToyRemoteFunction' trong MenuToys!")
-    return
-end
-
--- CẤU HÌNH
-local ACTION_NAME = "TaoNemAction"
-local TOY_NAME = "VatTheNem"  -- ⚠️ CẦN ĐỔI TÊN CHO ĐÚNG VỚI GAME
+-- Tên của Action và cấu hình nút bấm
+local ACTION_NAME = "TaoNemNhanhAction"
 local isToggled = false
 local currentSpawnedToy = nil
-local button = nil
 
--- HÀM KIỂM TRA VẬT THỂ
+-- TÊN VẬT THỂ MUỐN TRIỆU HỒI (Thay đổi tên này theo đúng tên Toy trong danh sách game của bạn)
+local TARGET_TOY_NAME = "Toy" 
+
+-- Hàm kiểm tra trạng thái vật thể để tự động reset trạng thái nút bấm (Quay lại 1)
 local function checkToyStatus()
-    if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(Workspace) then
-        isToggled = false
-        currentSpawnedToy = nil
-        
-        -- Đổi màu nút về đỏ nếu tồn tại
-        if button then
-            button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-            local label = button:FindFirstChild("TextLabel")
-            if label then label.Text = "Tạo ném" end
-        end
-        return true
-    end
-    return false
+	if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(workspace) then
+		isToggled = false
+		local button = v1:GetButton(ACTION_NAME)
+		if button then
+			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu (1)
+		end
+		currentSpawnedToy = nil
+	end
 end
 
--- HÀM XỬ LÝ KHI BẤM NÚT
+-- Hàm xử lý kích hoạt triệu hồi lập tức khi nhấn nút
 local function onButtonPress(actionName, inputState, inputObject)
-    if inputState ~= Enum.UserInputState.Begin then return end
-    
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then
-        warn("⚠️ Nhân vật chưa sẵn sàng!")
-        return
-    end
-    
-    -- Kiểm tra vật thể cũ nếu đang bật
-    if isToggled then
-        checkToyStatus()
-    end
-    
-    if not isToggled then
-        -- BẬT CHẾ ĐỘ: Tạo vật thể
-        local cameraCFrame = Workspace.CurrentCamera and Workspace.CurrentCamera.CFrame or CFrame.new()
-        local rotatePart = Workspace:FindFirstChild("RotateOrientPart")
-        
-        if not rotatePart then
-            warn("⚠️ Không tìm thấy 'RotateOrientPart' trong Workspace!")
-            return
-        end
-        
-        -- GỌI REMOTE FUNCTION
-        local success = SpawnToyRF:InvokeServer(TOY_NAME, cameraCFrame, rotatePart.Orientation)
-        
-        if success == "SpawnedToy" then
-            isToggled = true
-            
-            -- TÌM VẬT THỂ VỪA TẠO
-            task.spawn(function()
-                task.wait(0.2)
-                for _, child in pairs(Workspace:GetChildren()) do
-                    if child.Name == TOY_NAME then
-                        local distance = (child:GetPivot().Position - character.HumanoidRootPart.Position).Magnitude
-                        if distance < 15 then
-                            currentSpawnedToy = child
-                            currentSpawnedToy.Destroying:Connect(function()
-                                task.wait(0.1)
-                                checkToyStatus()
-                            end)
-                            break
-                        end
-                    end
-                end
-            end)
-            
-            -- ĐỔI MÀU NÚT
-            if button then
-                button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-                local label = button:FindFirstChild("TextLabel")
-                if label then label.Text = "Đã tạo" end
-            end
-        else
-            warn("❌ Remote Function trả về lỗi: ", success)
-        end
-    else
-        -- TẮT CHẾ ĐỘ: Xóa vật thể
-        if currentSpawnedToy then
-            currentSpawnedToy:Destroy()
-            currentSpawnedToy = nil
-        end
-        isToggled = false
-        
-        if button then
-            button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-            local label = button:FindFirstChild("TextLabel")
-            if label then label.Text = "Tạo ném" end
-        end
-    end
+	if inputState == Enum.UserInputState.Begin then
+		local character = LocalPlayer.Character
+		if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+		
+		-- Kiểm tra an toàn trạng thái vật thể trước khi xử lý
+		if isToggled then
+			checkToyStatus()
+		end
+
+		if not isToggled then
+			-- TRẠNG THÁI 1: BẬT - Gọi trực tiếp Remote để triệu hồi ngay lập tức dưới chân
+			isToggled = true
+			
+			-- Lấy thông số CFrame camera và góc xoay từ môi trường giống hệt mã gốc
+			local cameraCFrame = workspace.CurrentCamera.CFrame
+			local rotatePart = workspace:WaitForChild("RotateOrientPart")
+			
+			-- Gọi trực tiếp v_u_9 (SpawnToyRemoteFunction) không cần thông qua Menu UI
+			local result = v_u_9:InvokeServer(TARGET_TOY_NAME, cameraCFrame, rotatePart.Orientation)
+			
+			if result == "SpawnedToy" then
+				-- Đổi màu nút sang xám báo hiệu đang hoạt động
+				local button = v1:GetButton(ACTION_NAME)
+				if button then
+					button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+				end
+				
+				-- Quét nhanh Workspace để lấy Instance của vật thể vừa spawn dưới chân
+				task.spawn(function()
+					task.wait(0.05) -- Chờ server xử lý spawn trong tích tắc
+					for _, child in pairs(workspace:GetChildren()) do
+						if child.Name == TARGET_TOY_NAME and (child:GetPivot().Position - character.HumanoidRootPart.Position).Magnitude < 15 then
+							currentSpawnedToy = child
+							
+							-- Khi vật thể bị biến mất/hủy, tự động trả nút về trạng thái ban đầu (1)
+							currentSpawnedToy.Destroying:Connect(function()
+								task.wait(0.05)
+								checkToyStatus()
+							end)
+							break
+						end
+					end
+				end)
+			else
+				-- Nếu Server từ chối spawn, reset trạng thái nút về đỏ ngay lập tức
+				isToggled = false
+			end
+		else
+			-- TRẠNG THÁI QUAY LẠI 1: TẮT - Xóa vật thể cũ để chuẩn bị cho lần bấm tiếp theo
+			if currentSpawnedToy then
+				currentSpawnedToy:Destroy()
+			end
+			isToggled = false
+			currentSpawnedToy = nil
+			
+			-- Đặt lại nút màu đỏ
+			local button = v1:GetButton(ACTION_NAME)
+			if button then
+				button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+			end
+		end
+	end
 end
 
--- TẠO NÚT TRÊN MÀN HÌNH
-ContextActionService:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
+-- Tạo nút bấm vật lý màu đỏ dành riêng cho giao diện điện thoại
+v1:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
 
--- ĐỢI NÚT ĐƯỢC TẠO
-task.wait(0.5)
-button = ContextActionService:GetButton(ACTION_NAME)
-
-if not button then
-    warn("❌ Không thể tạo nút trên màn hình!")
-    return
+local mobileButton = v1:GetButton(ACTION_NAME)
+if mobileButton then
+	mobileButton.Size = UDim2.new(0, 90, 0, 90)
+	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Vị trí thuận tiện trên màn hình điện thoại
+	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Thiết lập nút màu đỏ gốc
+	
+	-- Tạo nhãn chữ "Tạo ném" trên nút bấm
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 1, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "Tạo ném"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.Font = Enum.Font.SourceSansBold
+	titleLabel.TextSize = 16
+	titleLabel.Parent = mobileButton
 end
-
--- TÙY CHỈNH NÚT
-button.Size = UDim2.new(0, 90, 0, 90)
-button.Position = UDim2.new(0.5, -45, 0.5, -45)
-button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-
--- TẠO NHÃN CHO NÚT
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 1, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Tạo ném"
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.TextSize = 16
-titleLabel.Parent = button
-
-print("✅ Script đã tải thành công! Nút 'Tạo ném' sẽ xuất hiện trên màn hình.")
