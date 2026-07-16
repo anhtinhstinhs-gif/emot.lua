@@ -1,54 +1,57 @@
--- Kế thừa các dịch vụ và biến hệ thống trực tiếp từ mã nguồn gốc của game
+-- Kế thừa các dịch vụ hệ thống trực tiếp từ mã nguồn gốc của game
 local v1 = game:GetService("ContextActionService")
 local v3 = game:GetService("Players")
 local v_u_4 = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = v3.LocalPlayer
 
--- Khai báo Remote Function spawn vật thể gốc từ game của bạn (v_u_9 trong mã nguồn gốc)
+-- Khai báo Remote Function spawn vật thể gốc từ game (v_u_9)
 local v_u_9 = v_u_4:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
 
--- Tên của Action và cấu hình nút bấm
+-- Cấu hình Action
 local ACTION_NAME = "TaoNemNhanhAction"
 local isToggled = false
 local currentSpawnedToy = nil
 
--- TÊN VẬT THỂ MUỐN TRIỆU HỒI (Thay đổi tên này theo đúng tên Toy trong danh sách game của bạn)
+-- TÊN VẬT THỂ MUỐN TRIỆU HỒI (Thay đổi tên này theo đúng tên Toy trong game của bạn)
 local TARGET_TOY_NAME = "Toy" 
 
--- Hàm kiểm tra trạng thái vật thể để tự động reset trạng thái nút bấm (Quay lại 1)
+-- Hàm reset trạng thái nút về ban đầu (1)
 local function checkToyStatus()
 	if not currentSpawnedToy or not currentSpawnedToy:IsDescendantOf(workspace) then
 		isToggled = false
 		local button = v1:GetButton(ACTION_NAME)
 		if button then
-			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu (1)
+			button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Quay lại màu đỏ ban đầu
 		end
 		currentSpawnedToy = nil
 	end
 end
 
--- Hàm xử lý kích hoạt triệu hồi lập tức khi nhấn nút
+-- Hàm xử lý kích hoạt triệu hồi lập tức ngay dưới chân người chơi
 local function onButtonPress(actionName, inputState, inputObject)
 	if inputState == Enum.UserInputState.Begin then
 		local character = LocalPlayer.Character
 		if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 		
-		-- Kiểm tra an toàn trạng thái vật thể trước khi xử lý
+		-- Kiểm tra trạng thái an toàn của vật thể cũ
 		if isToggled then
 			checkToyStatus()
 		end
 
 		if not isToggled then
-			-- TRẠNG THÁI 1: BẬT - Gọi trực tiếp Remote để triệu hồi ngay lập tức dưới chân
+			-- TRẠNG THÁI 1: BẬT - Gọi Remote triệu hồi trực tiếp dưới chân
 			isToggled = true
 			
-			-- Lấy thông số CFrame camera và góc xoay từ môi trường giống hệt mã gốc
-			local cameraCFrame = workspace.CurrentCamera.CFrame
+			-- CẬP NHẬT TOẠ ĐỘ THỰC TẾ: Lấy vị trí ngay dưới chân của người chơi thay vì vị trí Camera cũ
+			local hrp = character.HumanoidRootPart
+			local spawnCFrame = hrp.CFrame * CFrame.new(0, -3, 0) -- -3 studs theo trục Y để nằm ngay dưới chân
+			
+			-- Lấy hướng xoay mặc định của game giống hệt mã gốc
 			local rotatePart = workspace:WaitForChild("RotateOrientPart")
 			
-			-- Gọi trực tiếp v_u_9 (SpawnToyRemoteFunction) không cần thông qua Menu UI
-			local result = v_u_9:InvokeServer(TARGET_TOY_NAME, cameraCFrame, rotatePart.Orientation)
+			-- Gọi trực tiếp Remote Function truyền toạ độ dưới chân vừa cập nhật
+			local result = v_u_9:InvokeServer(TARGET_TOY_NAME, spawnCFrame, rotatePart.Orientation)
 			
 			if result == "SpawnedToy" then
 				-- Đổi màu nút sang xám báo hiệu đang hoạt động
@@ -57,11 +60,11 @@ local function onButtonPress(actionName, inputState, inputObject)
 					button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 				end
 				
-				-- Quét nhanh Workspace để lấy Instance của vật thể vừa spawn dưới chân
+				-- Quét nhanh Workspace để lấy Instance của vật thể vừa tạo ngay dưới chân
 				task.spawn(function()
-					task.wait(0.05) -- Chờ server xử lý spawn trong tích tắc
+					task.wait(0.05)
 					for _, child in pairs(workspace:GetChildren()) do
-						if child.Name == TARGET_TOY_NAME and (child:GetPivot().Position - character.HumanoidRootPart.Position).Magnitude < 15 then
+						if child.Name == TARGET_TOY_NAME and (child:GetPivot().Position - hrp.Position).Magnitude < 15 then
 							currentSpawnedToy = child
 							
 							-- Khi vật thể bị biến mất/hủy, tự động trả nút về trạng thái ban đầu (1)
@@ -74,7 +77,7 @@ local function onButtonPress(actionName, inputState, inputObject)
 					end
 				end)
 			else
-				-- Nếu Server từ chối spawn, reset trạng thái nút về đỏ ngay lập tức
+				-- Thất bại thì tự động reset nút về đỏ
 				isToggled = false
 			end
 		else
@@ -94,16 +97,16 @@ local function onButtonPress(actionName, inputState, inputObject)
 	end
 end
 
--- Tạo nút bấm vật lý màu đỏ dành riêng cho giao diện điện thoại
+-- Khởi tạo nút bấm màu đỏ trên điện thoại di động
 v1:BindAction(ACTION_NAME, onButtonPress, true, Enum.KeyCode.F)
 
 local mobileButton = v1:GetButton(ACTION_NAME)
 if mobileButton then
 	mobileButton.Size = UDim2.new(0, 90, 0, 90)
-	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45) -- Vị trí thuận tiện trên màn hình điện thoại
-	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Thiết lập nút màu đỏ gốc
+	mobileButton.Position = UDim2.new(0.15, 0, 0.5, -45)
+	mobileButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ chủ đạo
 	
-	-- Tạo nhãn chữ "Tạo ném" trên nút bấm
+	-- Nhãn chữ "Tạo ném" trên nút
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 1, 0)
 	titleLabel.BackgroundTransparency = 1
